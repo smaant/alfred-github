@@ -6,7 +6,7 @@ from datetime import datetime
 import xml.etree.ElementTree as ET
 import sys, os
 
-CACHE = "cache.txt"
+CACHE_FILE = "cache.txt"
 
 
 class Cache:
@@ -47,12 +47,12 @@ class Cache:
 
 def generate_xml(items):
     root = ET.Element('items')
-    owners = items.keys()
-    owners.sort()
-    for owner in owners:
-        sub = ET.SubElement(root, 'item', {'uid': owner, 'autocomplete': items[owner][0], 'arg': items[owner][1]})
+    keys = items.keys()
+    keys.sort()
+    for key in keys:
+        sub = ET.SubElement(root, 'item', {'uid': key, 'autocomplete': items[key][0], 'arg': items[key][1]})
         title = ET.SubElement(sub, 'title')
-        title.text = owner
+        title.text = key
 
     return ET.tostring(root, 'utf-8')
 
@@ -76,6 +76,14 @@ def get_repo_url(owner, repo):
 def suggest_owner(cache, owner):
     return {name: (name, get_user_url(name)) for name in cache.keys() if owner in name}
 
+def guess_repo(cache, name):
+    repos = {}
+    for owner in cache.keys():
+        for repo in cache.get(owner):
+            if name in repo:
+                repos[owner + '/' + repo] = (owner + ' ' + repo, get_repo_url(owner, repo))
+    return repos
+
 if __name__ == '__main__':
     github_api_key = os.getenv('GITHUB_API_KEY', '')
     if github_api_key == '':
@@ -85,12 +93,9 @@ if __name__ == '__main__':
     result = []
     if len(sys.argv) == 2:
         args = sys.argv[1].split()
-        owner = args[0]
-        complete_owner = ' ' in sys.argv[1]
-        repo_name = args[1] if len(args) > 1 else ''
-
-        cache = Cache(CACHE)
-        if complete_owner:
+        cache = Cache(CACHE_FILE)
+        if len(args) >= 2:
+            owner, repo_name = args[:2]
             github = GitHub(github_api_key)
             repos = cache.get(owner) or github.get_repos(owner)
             result = {repo: (owner + ' ' + repo, get_repo_url(owner, repo)) for repo in repos if repo_name in repo}
@@ -99,7 +104,8 @@ if __name__ == '__main__':
                 cache.put(owner, repos)
                 cache.save()
         else:
-            result = suggest_owner(cache, owner)
+            result = guess_repo(cache, args[0])
+            result.update(suggest_owner(cache, args[0]))
 
     if result:
         print generate_xml(result)
