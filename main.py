@@ -5,6 +5,7 @@ import json
 from datetime import datetime
 import xml.etree.ElementTree as ET
 import sys, os
+from fuzzywuzzy import fuzz
 
 CACHE_FILE = "cache.txt"
 
@@ -73,14 +74,18 @@ def get_repo_url(owner, repo):
     return get_user_url(owner) + repo
 
 
+def is_match(s1, s2):
+    return fuzz.partial_ratio(s1, s2) >= 65
+
 def suggest_owner(cache, owner):
-    return {name: (name, get_user_url(name)) for name in cache.keys() if owner in name}
+    return {name: (name, get_user_url(name)) for name in cache.keys() if is_match(owner, name)}
+
 
 def guess_repo(cache, name):
     repos = {}
     for owner in cache.keys():
         for repo in cache.get(owner):
-            if name in repo:
+            if is_match(name, repo):
                 repos[owner + '/' + repo] = (owner + ' ' + repo, get_repo_url(owner, repo))
     return repos
 
@@ -98,7 +103,7 @@ if __name__ == '__main__':
             owner, repo_name = args[:2]
             github = GitHub(github_api_key)
             repos = cache.get(owner) or github.get_repos(owner)
-            result = {repo: (owner + ' ' + repo, get_repo_url(owner, repo)) for repo in repos if repo_name in repo}
+            result = {repo: (owner + ' ' + repo, get_repo_url(owner, repo)) for repo in repos if is_match(repo_name, repo)}
 
             if repos and not cache.has_key(owner):
                 cache.put(owner, repos)
