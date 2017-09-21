@@ -4,7 +4,7 @@ from github import GitHub
 import json
 from datetime import datetime
 import xml.etree.ElementTree as ET
-import sys, os
+import sys, os, re
 from fuzzywuzzy import fuzz
 
 CACHE_FILE = "cache.txt"
@@ -105,7 +105,7 @@ if __name__ == '__main__':
 
     result = []
     if len(sys.argv) == 2:
-        args = sys.argv[1].split()
+        args = re.sub('\s+', ' ', sys.argv[1]).split(' ')
         cache = Cache(CACHE_FILE)
         github = GitHub(github_api_key)
 
@@ -117,7 +117,7 @@ if __name__ == '__main__':
         if len(args) >= 2:
             owner, repo_name = args[:2]
             repos = cache.get(owner) or github.get_repos(owner)
-            result = {repo: (owner + ' ' + repo, get_repo_url(owner, repo)) for repo in repos if is_match(repo_name, repo)}
+            result = {repo: (owner + ' ' + repo, get_repo_url(owner, repo)) for repo in repos if is_match(repo_name, repo) or repo_name == ''}
 
             if repos and not cache.has_key(owner):
                 cache.put(owner, repos)
