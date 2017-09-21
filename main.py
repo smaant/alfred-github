@@ -89,6 +89,14 @@ def guess_repo(cache, name):
                 repos[owner + '/' + repo] = (owner + ' ' + repo, get_repo_url(owner, repo))
     return repos
 
+
+def refresh_cache(cache, github):
+    new_cache = Cache(CACHE_FILE)
+    for owner in cache.keys():
+        new_cache.put(owner, github.get_repos(owner))
+    new_cache.save()
+
+
 if __name__ == '__main__':
     github_api_key = os.getenv('GITHUB_API_KEY', '')
     if github_api_key == '':
@@ -99,9 +107,15 @@ if __name__ == '__main__':
     if len(sys.argv) == 2:
         args = sys.argv[1].split()
         cache = Cache(CACHE_FILE)
+        github = GitHub(github_api_key)
+
+        if args[0] == '!refresh':
+            refresh_cache(cache, github)
+            print generate_placeholder_xml("Finished cached refreshing")
+            sys.exit(0)
+
         if len(args) >= 2:
             owner, repo_name = args[:2]
-            github = GitHub(github_api_key)
             repos = cache.get(owner) or github.get_repos(owner)
             result = {repo: (owner + ' ' + repo, get_repo_url(owner, repo)) for repo in repos if is_match(repo_name, repo)}
 
