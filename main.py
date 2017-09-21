@@ -75,7 +75,7 @@ def get_repo_url(owner, repo):
 
 
 def is_match(s1, s2):
-    return fuzz.partial_ratio(s1, s2) >= 65
+    return fuzz.partial_ratio(s1, s2) >= 70
 
 def suggest_owner(cache, owner):
     return {name: (name, get_user_url(name)) for name in cache.keys() if is_match(owner, name)}
